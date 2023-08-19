@@ -159,7 +159,7 @@ if [ "$ALLOW_ICANHAZIP" == "yes" ]; then
     PUBLIC_IP=$(curl -s https://ipv{4,6}.icanhazip.com/ | paste -s -d ',' - | sed 's/,/, /g')
 fi
 echo "The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6."
-prompt "Enter your server public ip or domain (detected $PUBLIC_IP))" PUBLIC_IP "$(cut -d "," -f 1 <<< "$PUBLIC_IP")"
+prompt "Enter your server public ip or domain (detected $PUBLIC_IP)" PUBLIC_IP "$(cut -d "," -f 1 <<< "$PUBLIC_IP")"
 PORT=$(option FAKE_PORT)
 [ -z "$PORT" ] && PORT=$(option "FakePort")
 SERVER_PUBKEY=$(option PrivateKey | wg pubkey)
