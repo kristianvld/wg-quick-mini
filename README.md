@@ -14,12 +14,199 @@ A minimal shell script to create a wg-quick config, generate clients (with qr-co
 
 ## Get started
 ```bash
-wget '<url-to-wg.sh>' # TODO: fix url
+wget 'https://raw.githubusercontent.com/kristianvld/wg-quick-mini/main/wg.sh'
 chmod +x wg.sh
 ./wg.sh
 ```
-See the ascii cinema below for example execution.
-*TODO: fix recording*
+
+## Example:
+Example first time execution:
+```
+root@amazing-dragonfly:/etc/wireguard# ./wg.sh 
+WireGuard server config not found. Creating...
+Enter internal CIDR mask (default: 10.100.10.1/24, fd00:100::1/64): 
+Enter port to listen to  (default: 51820): 53
+DNS server(s) for clients to use (default: 1.1.1.1, 2606:4700:4700::1111): 
+Main incoming network interface (default: ens2): 
+Allow internal traffic between clients (default: Yes) [Yes/no]: 
+Port 53 is already in use. We can however map incoming traffic using iptables rules.
+Enter the real port to listen to (default: 51820): 
+Created WireGuard server config at /etc/wireguard/wg0.conf
+[#] ip link add wg0 type wireguard
+[#] wg setconf wg0 /dev/fd/63
+[#] ip -4 address add 10.100.10.1/24 dev wg0
+[#] ip -6 address add fd00:100::1/64 dev wg0
+[#] ip link set mtu 1420 up dev wg0
+[#] iptables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] ip6tables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] iptables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] ip6tables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] sysctl -q -w net.ipv4.ip_forward=1
+[#] sysctl -q -w net.ipv6.conf.all.forwarding=1
+[#] iptables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] ip6tables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] iptables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip6tables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes): 
+The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6.
+Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37): 
+Enter a name for the new client: my laptop
+Assigning new client ip(s): 10.100.10.2/32, fd00:100::2/128
+Restarting wireguard server to add client...
+[#] ip link delete dev wg0
+[#] iptables -D FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] ip6tables -D FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] iptables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
+[#] ip6tables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
+[#] sysctl -q -w net.ipv4.ip_forward=0
+[#] sysctl -q -w net.ipv6.conf.all.forwarding=0
+[#] iptables -t nat -D PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] ip6tables -t nat -D PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] iptables -t nat -D POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip6tables -t nat -D POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip link add wg0 type wireguard
+[#] wg setconf wg0 /dev/fd/63
+[#] ip -4 address add 10.100.10.1/24 dev wg0
+[#] ip -6 address add fd00:100::1/64 dev wg0
+[#] ip link set mtu 1420 up dev wg0
+[#] iptables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] ip6tables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] iptables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] ip6tables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] sysctl -q -w net.ipv4.ip_forward=1
+[#] sysctl -q -w net.ipv6.conf.all.forwarding=1
+[#] iptables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] ip6tables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] iptables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip6tables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+█████████████████████████████████████████████████████████████████████████
+█████████████████████████████████████████████████████████████████████████
+████ ▄▄▄▄▄ █▄█▄ █ ▀ ▀ ██▄▀██▀▄▀ ▀▄▄█▄█▄▄▄█ ▄█ ███▄▀ ▄██▄█ █▄▀█ ▄▄▄▄▄ ████
+████ █   █ █ ▄█ ▀▀██▀▄▀ ▀▀▄▀▄█▀▀▄▀▄█ ████ ▀ ▀ █▀█▄ ▄█ ▄  ▀ ▀▄█ █   █ ████
+████ █▄▄▄█ █▄  ▄▀ ▄▄ ▀▀▄▄█  ▄█▀ ██ ▄▄▄ █▄  ▄▀▀█▀█▄▀█▄▀ █▄█▀█▄█ █▄▄▄█ ████
+████▄▄▄▄▄▄▄█▄█▄▀ ▀ █ ▀▄█ █▄▀▄▀ █▄▀ █▄█ ▀▄█ █▄▀▄█ ▀ ▀ █ █▄▀ █ █▄▄▄▄▄▄▄████
+████ ▄ ▄█▀▄█ ▄▀ ▀██▄▄██▄▄█ █  ▀█▄▄  ▄▄▄▄▀▄█▀ ▄  █▄█ ▀▄█  ▀█▀▀ ▀█ ▄▄▀ ████
+████ ▄▄▀ ▄▄ ▀█▀▄▄   ▀   ▄█▄▀▀█▀ ▀ ▄▄▄█▀▀█ ▀█ █ █▄█ ▄▀ █▀▄▄▀▀█▄ █ ██ ▄████
+████▀▄▄███▄ ███▄▄▀▄▄▀█ ▀█▀▀▄ ▀▀█ ▀ ▄█ █▄ █ ██ █ ██▄  ▄█▀█▄█ ▀▀█▀ ▄▄▄█████
+████▄███ ▄▄ ▀  ▄▄█▄ ▄▀█  █ ██ ▄▄▄ █▄▀   ▀▄▄▄ █  ▀██  █    ▄▄ ▀█▀▄▀▄▄ ████
+██████  ▀ ▄█ █▄▀██  ▄█▀▄ ▀▄ ▀ █▀ ▀██ ▀  ▄█ █ ▄▀▀█ ▀ ▄ ▄▄ █▀█ █▀▀█ ▀█ ████
+████▀ ▀▄▄▄▄██ ▀███▀█▀ ▀█▄▄▄ ▄ ▀▄▄▄▄▀▄█ ▀▄▀▄ ▀ ███ ▀ ▄█▀▄█▀ █ ▄▄▀  ▀▀▀████
+████ ▄█▀  ▄▀  ▄▀▀  █ ▄ ▄ ▀ █▀▀▄██▄ ▀▀▄ ▀▄▀█▀  ▀ ▀███▄▄█   ▀▀▄█▀▄█▄▄▀▀████
+████▀▄▀█▄▀▄▄█ ▀█ █▄▀▄▄█▀▀▀▀█▀▄█▄   █▄▀▀▄█▄ ▀▄▄█▀▀ ▀▄█▄▀▀▄█ ▀▄█▀▀█▀▄ █████
+████▀█ ▀  ▄▄▄ ▄▄█▀ ▄▄▀ ▄ ▄▀ ██▀▀█▀▀▀ ██▀▄  ▀▀ █ ▀ ▀▀▀▄ ███ █ ▄▄█▄▄▀▄█████
+█████ ▀█▀ ▄  █▄▀▀▄█ ███  ▀▀█▀▄ ▄▄█▄ ▀ █▀▀▄█▄▀█▄ █ ▀█▄▄▄▀ █ ▄▄ ▄▀▀█ ▀▄████
+████  ▄ ▄▀▄▄  ▄▀ █ ▄▀█▀ ▄▄  ▀▄▄██▄█▄ ▀▀█▀ █▀▀▀  ▄▄▄▀▀   █▄▄▀▄  ▀▀ █▀▀████
+████▄ ▀▄ ▄▄▄ ▀▄█ ▀███▀ ▄▀ ▄▀▄▀████ ▄▄▄ ▀█▄▄█▄▀ █ ████ ▀▄▄▄▀  ▄▄▄ ▄▄██████
+████▀  ▀ █▄█  █▄ █ ▄█▄▀█▀█▀▄▄▀▄█ █ █▄█  ▀ ▀ █▀██▄▄ ▀ █▀▀▄██▄ █▄█   ▄ ████
+████▀     ▄▄ ▀█▄ ▀ ▄▄ █ ▄█ █▀██▄▀▀▄     ▄██ ▄▄█▀ ▀▀▀▄▄▀▀█ █▀▄▄▄▄ ██ █████
+████ █▄ ▄▄▄▄▀▀▄▄█ ▀▀██▄▄█▄██▀▀ ██ ▄█ ▄▀▀▀▀▀ ▀▄█▀█▀▄ ▄▄▀▄▀██▄█▄▄█▄▄  █████
+████▄  █ ▄▄█ ▀▀▄▀█   ▀▄█  ▀▄▀▄  ▀▀ █▄█ █████ ▄  ▀ ▄█ ▄ ▀▄▀ ▄ ▀▄ ▄█   ████
+████ ▄▄█▄ ▄   ▀█▀▄█▄  ▄▀█▀█▄▄ ▄ ▀▄█▄▄  ▄█▀ █ █▀▀▄▀ ▄▀▀▀▄█ ▀█▄▀▀ ▄ ▀██████
+████▄▀█▀▀█▄█▄▄▄▀██▄██▀ ▄▀▄▀ █▀▄▀▄█▀▄█▄ ▄ █▀▄█▀ ▀█▄▀▀▀████▀ ▄ ▄▄▀██ ▀▀████
+████▀▄█▀▄█▄█▀▄█▄▀█ █ ▀▀ ▀█▀██▄▀█  █▀▀█ ▄▀▀▄ ▄▄▀ █▄██▀█▄▄▄  █▄▄▄█▀▄▄▄▄████
+████▄▀▀ █▄▄█▄▄ ▄▀█▄▀▄ ▄█▀▀▄ █▀  ▀▀█▄ ██▄ ▀ ▀▄▄█▀▄▀█▀█ █ ▀▄▀▀ ▄ █▀ ▄▄▀████
+████▀▀▀ ▀ ▄█ ██▀█▀ ▄▄ ▀▄▀█▄▄█ █▄▄█▀██▄▀▀▄██▄▄▀ █ ▄▀▄█▄██▄▄ ▀ ▀█▄█▀▀▄█████
+█████▀ ▄▄█▄▀█▀▀▄▀ █▀█▄▄█▄ ▀█ ██ █▀██▀▄█▀██▄▀▄  ▀██▄▄▄█▄▀ ▄ ▄▄▄▄▄█ ██▀████
+████ ▀ █▀▀▄█▀▀ ▄ ▄█▄ █▄██▄ ▄█▀██▄█ ▀ █▄ ▀▄▄▀▀ ▄█▀▀ ▀▄▀▄▀ ▀█▀ █▀  ▀██▀████
+████▀█▄ █▄▄  ▀█  ▄ ▄▄▄▄█  █  ▄▀█▄▀██▄▀▀▀▀▀▀▄▄▀▄█ █▄██▄ ▄▀ ▀█▀ █  ▀▀▀▄████
+█████▄▄█▄█▄█▀ ▀█  ▄▄██ █▄▀  ▀██▄▄▀ ▄▄▄   ███▄▄█▄█ ▄▄▀▄  ▀▀▄  ▄▄▄ ████████
+████ ▄▄▄▄▄ ██▄▄▄▀ ███▄ █▀█▄  █▀ █  █▄█ ▀▀▀ ▀█▄█▀▄█ ▄█▀▀▄█▄ █ █▄█ ▄███████
+████ █   █ █▀▀█▄▀█▄██▄█▄▀▄▀▄▀▄ █▀▀▄▄  ▄▄▄▄▄▄█▄  ▀█▄  █▄██▀█  ▄▄▄ █ ▄▄████
+████ █▄▄▄█ █ ▀▄▄ ▀█ ▄█ █████▀▄▀▄▄▀▄▀▀▄ █  ▀▀██▄▀▀▀▄ █▄█▄▄▀▄ ▄▀▀ ▀▀▀▀▄████
+████▄▄▄▄▄▄▄█▄█▄▄▄▄▄▄███▄██▄▄▄██▄▄██▄████▄█▄▄▄▄█▄███▄▄▄▄██▄██▄██████▄█████
+█████████████████████████████████████████████████████████████████████████
+█████████████████████████████████████████████████████████████████████████
+Client config saved to /etc/wireguard/clients/my laptop.conf
+Enter a name for the new client: ^C
+root@amazing-dragonfly:/etc/wireguard# cat ./clients/my\ laptop.conf 
+[Interface]
+PrivateKey = 6D+ngNWVuA8SWQCvH8M4CmTQIxzWYE3/ISzUzOMWUUM=
+DNS = 1.1.1.1, 2606:4700:4700::1111
+Address = 10.100.10.2/32, fd00:100::2/128
+
+[Peer]
+PublicKey = 7OXWDMsT/fLCZG+8JlNwDm/kDX0PhaKnGiD4GIR63gQ=
+PresharedKey = gF7DfiqfRpqNGO1nJIQund8Lc8zNTO69rw7y6b3ZVlI=
+Endpoint = 13.37.13.37:53
+AllowedIPs = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+```
+To add more clients, even after editing the `wg0.conf` file, simply run the script again:
+```
+root@amazing-dragonfly:/etc/wireguard# ./wg.sh 
+Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes): 
+The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6.
+Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37): 
+Enter a name for the new client: my phone
+Assigning new client ip(s): 10.100.10.3/32, fd00:100::3/128
+Restarting wireguard server to add client...
+[#] ip link delete dev wg0
+[#] iptables -D FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] ip6tables -D FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] iptables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
+[#] ip6tables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
+[#] sysctl -q -w net.ipv4.ip_forward=0
+[#] sysctl -q -w net.ipv6.conf.all.forwarding=0
+[#] iptables -t nat -D PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] ip6tables -t nat -D PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] iptables -t nat -D POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip6tables -t nat -D POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip link add wg0 type wireguard
+[#] wg setconf wg0 /dev/fd/63
+[#] ip -4 address add 10.100.10.1/24 dev wg0
+[#] ip -6 address add fd00:100::1/64 dev wg0
+[#] ip link set mtu 1420 up dev wg0
+[#] iptables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] ip6tables -A FORWARD -i wg0 -o ens2 -j ACCEPT
+[#] iptables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] ip6tables -t nat -I POSTROUTING -o ens2 -j MASQUERADE
+[#] sysctl -q -w net.ipv4.ip_forward=1
+[#] sysctl -q -w net.ipv6.conf.all.forwarding=1
+[#] iptables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] ip6tables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
+[#] iptables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+[#] ip6tables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
+█████████████████████████████████████████████████████████████████████████
+█████████████████████████████████████████████████████████████████████████
+████ ▄▄▄▄▄ █▀ ▄█ ▄▀ ▀█ ▄▀█▄▀▀██▄▄▄ ▀▄▀▄  █▄ █▄▀█▀ ▀▄ █▀ █▄█▄▀█ ▄▄▄▄▄ ████
+████ █   █ █▀▀ ▀ ▀▀▄ ▄ ▀  █▀█▄▀ █▀█▄ ██▄█▄█ ▄▀▄ █ █▄▄▀▄▀▀▀ ▀▄█ █   █ ████
+████ █▄▄▄█ █▀▄ █▄ █▀▄ ▄ █ ▄▀▀█▄█▀▄ ▄▄▄ ▄▄ █▀ ▄▄█▄▀▀▄▀█▀  ▄▀█▄█ █▄▄▄█ ████
+████▄▄▄▄▄▄▄█▄▀ █▄▀▄▀ █ █▄▀▄█ █▄▀▄█ █▄█ █ █▄▀▄█ █▄█ █▄█▄▀▄█▄█▄█▄▄▄▄▄▄▄████
+████ ▄▄ ▄▀▄▄ ▀  ▄ ████▄█▄▄▀█▀▀▀▀▄▄  ▄▄▄▄ ██ ▀▄▀▀██▄  ██▀▀▀▄ ▀ ▀▄▀▄█ ▀████
+████▄▄█  █▄ ▄ █▀▄▄▀▀▄▀█▄█   ▄▀ ▀█▄▄ █▀█ ▄▄▄ ▄▄█▀█ ▄▀▄▄▄▄ █▄█▄▀▄▄█▀▄█ ████
+████▀█ ▀█ ▄▀▄▀█▄▀▀ ▀█▀▄▀▀█▀ ▄▀█▀ █▄▀▄▄█▀ ▄ ██▄▀▄█▀▄▄▄▄▀██ ▀ ████▄▄  █████
+████  █▄▄ ▄▄█▄▄ ▀██▀▄▀█▀ ▄▀█▄█ ██ ▄█ ▀█  ▄██▀█▀ ▀▄▄ ▀▄ ▀▀ ██  ▄▀█ ▄█▀████
+█████▄▄██▀▄▄█ ███▀▀▄█▄ █▀▄ ▄█▀▀▀ ▄▄▀▀▀ ▀▀▀▀ ▄█▄█▄██▀▀▄█▀▄▄▄▀▀ █  ▄  ▄████
+█████ █ ██▄▄ ▄▄▀▄█▄▄ ▄██▄ ▄██ █▀   ▀▄  ▀ ▀▄▄▀ ██▀▄▀▄ ██ ██▄█▄ ▄█▄ ██▀████
+████▀██ ▄█▄▀█▀▄▀ ▄▄▄▀▄▀█  ▀█  ▄▄▄▄  ██▀█▄▀█ ▀ ▀▀▀██████▀▀   ▄▄ ▄▄█▄  ████
+████▀▀    ▄▀█  ▄██▀▄ █ █ ▄█▄▄ ▄▀▄▀█ █▄██▀  ▄▀█ █ ▄██   ▄ ▄███ █  ███▀████
+████▄▀▀▄ ▄▄▄  ▄██▀  ▄█▄▄▄ ▀▄▀██▀▄██▀▄▄██  ▄█▀▄▀ ██▀██▄▄▀█▀▄█▄ ▄▀ ▄█ █████
+████▀█▀█▄▄▄▀ ▄██ ██▀▄█▄▀   █ █ █ █▀█▀ ▄█ █▀▀▄██▀█▀ █▀█▄ ▀█▀█▄▀█▀ ▄  █████
+█████▄██▄▀▄█▀█ ▄█▀▀▀█▄▄▄█▀▄▀▄ █ ▀█▀█▀▄█ ▄  █▀ █▄█▀   ▄▀█▀█▀███▄ ▄▄▄▄█████
+████▀ █  ▄▄▄ ▀▀  ▀▄▀█▀ ▄█  █ █ ▀█▀ ▄▄▄ █ ▄▀▀▄█▄▄█▀█▀▀ █ ▄ █  ▄▄▄ ▄ ▀█████
+████▀█ █ █▄█ ▄▄▀████▄▄▀█  ▄▀  ▀▀██ █▄█   ▀▀▀▄▀▄▄▄█▀▀▀▄▀ ██▄█ █▄█ ▀ █▀████
+████▄▄█  ▄▄ ▄▄ █ ▄▄▀ ▀ ▄▄ ▄█▀▀▄ ▄▄ ▄ ▄▄██▀▄█ █▄█▀ ▀ ▀  ▄▀▀ █▄  ▄▄▀▄█▀████
+████▄█ █▀▄▄█▀▀█ ▀▄ ██▀ ▄▀ █▀█▀▄▀█▄▀█▄  ▄▄ █▄▀  ▀▀ ▄▄ ▄█ ▀▀▀▄▀ ▄▀ ▄▄▄█████
+████ ▀▄▄█▄▄ ▀▀█▄ ▄█▀▀▀█▄ ▀ ▄ █ ▀ ▀▀▄▄▄ █▄▄█▄▀█▀▀▀ ▄█▀█  █▀▀█  █ █▄ ▀▀████
+████▀▀▄ ██▄▄█▄ ▀ █▀▀▄▀▀█▄▄▀█▀▄█▄▄█ ▀▄█▄█ █▀ ▄▄▄██▄▄█▄█ ▀▀▀▄▀█▄█▀▀▄  ▀████
+████▀ ▄ ▀▄▄██ ▄█ █ ▀██▄▄█ ▀▄▀▀ ▀▀▀█▀   ▄▄▄▄ ▀█▄▀▀ ▀▀▀█▀▀██▄▄▄ ▄█▀█▄█▀████
+████▀▀█ ██▄▄▀█▄  ▄ ▄▀▀ ▀▀▄ █▄█▀▄▀▄▄ ▀▄▀▄  █▀▀▄ ▄██▄▄ ▄▄██ ▀▄▄███ █▄██████
+██████ █▀█▄▀█▀ █  ▀▄ ▀ ▀ ▄ ▀ ▀▀██▀  ▀█▀██▄ ▄▀█ ▄█▄▀  ▄▄███▄█▀▀▄▄▄▄█▀█████
+████▀ ▄ █▄▄▀ ▀▄▀▀▀  ▄▄█▄ █▄▄█▀   ▀█▄▀ ▀█ █▀ ▄█▄█▄ ▀ ▀▄▀▀▄ ▄▀▄██ ▀▀█ █████
+████▄ ▀  ▀▄▀█▀██▄█▄ ▄▄█▄ ▀ ▄▄▄█▀▀█▄▄ █▄▀▄ ▄ █ █ █▄▀▄█▄▄ ▀▄▀█▄██▄▄▀█▄ ████
+██████▀█  ▄▄▀█ ██ █▀▄▄▀▀▄▀▄█ █▄  ▄▄█▀▄▀▀▀▀█▄█▀▀▀ █▄ ▀▀█▄▄  █▀ █▀██▄ █████
+████▀█▄ █▄▄▄█▀ ▄▄█▀ ▄  █▄▄█▄▄▄█▀▄▄▀█  ██▄█▄ ▄█ █▄ ▄▀▀▄▄ ▀▄███▄█▄▄▀██▄████
+█████▄▄█▄█▄█ █▀ ▄▀ █▄█▀▄▄ ▀  ▄██▄▀ ▄▄▄  ▀█▄▄█▄▄██▀█▄ █ ▀ ▀█▀ ▄▄▄ ▄█▄▄████
+████ ▄▄▄▄▄ █▄▀ ██▄▄ ▀██▀   ▀█▀ █ ▀ █▄█  ▄█▀▄▀█ ██ ▄█ █ ▀▀██▀ █▄█  ▄ ▀████
+████ █   █ █ ██▄▄█ ▀█ ▀▄█ ▀ █▄▄▀▀█ ▄ ▄▄▀▄ ▄▄▀ ▄▄█▀▄  █ ▀██▀ ▄ ▄ ▄█▄ ▄████
+████ █▄▄▄█ █ ██▀▄▄▀▀██▀▄█▄▀█ █▀████▄██▀▄  ▀▀███▀  █ ▄████▀█▀▄     ▀ █████
+████▄▄▄▄▄▄▄█▄▄███████▄▄███▄█▄▄██▄██▄█▄█▄████▄█▄▄▄▄███▄█▄██▄██▄█▄▄█▄██████
+█████████████████████████████████████████████████████████████████████████
+█████████████████████████████████████████████████████████████████████████
+Client config saved to /etc/wireguard/clients/my phone.conf
+Enter a name for the new client: ^C
+root@amazing-dragonfly:/etc/wireguard# 
+```
 
 ## Usage:
 The only command for the script is `./wg.sh`. If the `/etc/wireguard/wg0.conf` config does not exists, it will prompt you for some inputs and create it for you. It will then ask you for client names, generate their configs and update the wireguard config.
