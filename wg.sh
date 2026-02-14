@@ -162,6 +162,7 @@ echo "The client can only recieve one endpoint. If you want to use both ipv4 and
 prompt "Enter your server public ip or domain (detected $PUBLIC_IP)" PUBLIC_IP "$(cut -d "," -f 1 <<< "$PUBLIC_IP")"
 PORT=$(option FAKE_PORT)
 [ -z "$PORT" ] && PORT=$(option "FakePort")
+[ -z "$PORT" ] && PORT=$(option "ListenPort")
 SERVER_PUBKEY=$(option PrivateKey | wg pubkey)
 DNS=$(option DNS)
 
