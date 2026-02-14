@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for cmd in wg wg-quick curl qrencode ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir tee cut awk paste; do
+for cmd in wg wg-quick curl qrencode ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir tee cut awk paste date stat touch mktemp cmp; do
     if ! which $cmd >/dev/null; then
         echo "Command '$cmd' not found! Please make sure it is installed before running this script again."
         FAIL=1
@@ -22,6 +22,63 @@ prompt() {
             echo "Invalid value '$user_input'"
         fi
     done
+}
+
+file_mtime_epoch() {
+    if stat --version >/dev/null 2>&1; then
+        stat -c %Y "$1"
+    else
+        stat -f %m "$1"
+    fi
+}
+
+touch_self_mtime() {
+    touch "$SCRIPT_PATH" 2>/dev/null || true
+}
+
+check_for_updates() {
+    local now script_mtime age_seconds week_seconds=604800
+    now=$(date +%s)
+    script_mtime=$(file_mtime_epoch "$SCRIPT_PATH")
+    age_seconds=$((now - script_mtime))
+    [ "$age_seconds" -lt "$week_seconds" ] && return
+
+    prompt "Check for updates by contacting GitHub?" CHECK_UPDATES "yes" "no"
+    if [ "$CHECK_UPDATES" != "yes" ]; then
+        echo "Skipping update check."
+        touch_self_mtime
+        return
+    fi
+
+    echo "Checking for updates..."
+    local tmp_file
+    tmp_file=$(mktemp)
+    if curl -fsSL "$UPDATE_URL" -o "$tmp_file"; then
+        if cmp -s "$SCRIPT_PATH" "$tmp_file"; then
+            echo "You are already using the latest version."
+        else
+            echo "An update is available."
+            echo "Repo: $REPO_URL"
+            prompt "Upgrade now?" DO_UPGRADE "yes" "no"
+            if [ "$DO_UPGRADE" == "yes" ]; then
+                if cp "$tmp_file" "$SCRIPT_PATH"; then
+                    chmod +x "$SCRIPT_PATH" 2>/dev/null || true
+                    touch_self_mtime
+                    rm -f "$tmp_file"
+                    echo "Updated successfully. Please re-run the script."
+                    exit 0
+                else
+                    echo "Upgrade failed. Could not write to $SCRIPT_PATH"
+                fi
+            else
+                echo "Upgrade skipped."
+            fi
+        fi
+    else
+        echo "Update check failed. Could not fetch $UPDATE_URL"
+    fi
+    rm -f "$tmp_file"
+    touch_self_mtime
 }
 
 option() {
@@ -93,6 +150,15 @@ CONFIG_DIR=${CONFIG_DIR:-"/etc/wireguard"}
 CLIENT_DIR=${CLIENT_DIR:-"$CONFIG_DIR/clients"}
 WG_NAME=${WG_NAME:-"wg0"}
 SERVER_CONFIG="$CONFIG_DIR/$WG_NAME.conf"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+case "$SCRIPT_PATH" in
+    /*) ;;
+    *) SCRIPT_PATH="$(pwd)/$SCRIPT_PATH" ;;
+esac
+REPO_URL=${REPO_URL:-"https://github.com/kristianvld/wg-quick-mini"}
+UPDATE_URL=${UPDATE_URL:-"https://raw.githubusercontent.com/kristianvld/wg-quick-mini/main/wg.sh"}
+
+check_for_updates
 
 # Check if the WireGuard server config exists, create if not
 if [ ! -f "$SERVER_CONFIG" ]; then
