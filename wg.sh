@@ -1,13 +1,5 @@
 #!/bin/bash
 
-for cmd in wg wg-quick curl qrencode ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir tee cut awk paste date stat touch mktemp cmp; do
-    if ! which $cmd >/dev/null; then
-        echo "Command '$cmd' not found! Please make sure it is installed before running this script again."
-        FAIL=1
-    fi
-done
-[ "$FAIL" == "1" ] && exit 1
-
 prompt() {
     local prompt="$1" var_name="$2" default="$3" valid_values=("${@:4}")
     [ -n "$default" ] && prompt="$prompt (default: $default)"
@@ -24,6 +16,46 @@ prompt() {
     done
 }
 
+show_help() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS] [CONFIG_PATH]
+
+Options:
+  -h, --help      Show this help and exit
+  -u, --update    Check for updates only, then exit
+
+Arguments:
+  CONFIG_PATH     WireGuard config path to use.
+                  Absolute paths are used as-is.
+                  Plain filenames are resolved under CONFIG_DIR (default: /etc/wireguard).
+
+Workflow:
+  If CONFIG_PATH is provided, that config is used.
+  If CONFIG_PATH is omitted, you are prompted (default: wg0.conf).
+  If the selected config exists, clients are added to it.
+  If the selected config does not exist, it is created first.
+EOF
+}
+
+require_commands() {
+    local missing=0
+    for cmd in "$@"; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            echo "Command '$cmd' not found! Please make sure it is installed before running this script again."
+            missing=1
+        fi
+    done
+    [ "$missing" -eq 1 ] && exit 1
+}
+
+resolve_config_path() {
+    case "$1" in
+        /*) echo "$1" ;;
+        */*) echo "$(pwd)/$1" ;;
+        *) echo "$CONFIG_DIR/$1" ;;
+    esac
+}
+
 file_mtime_epoch() {
     if stat --version >/dev/null 2>&1; then
         stat -c %Y "$1"
@@ -37,11 +69,12 @@ touch_self_mtime() {
 }
 
 check_for_updates() {
+    local force_check="$1"
     local now script_mtime age_seconds week_seconds=604800
     now=$(date +%s)
     script_mtime=$(file_mtime_epoch "$SCRIPT_PATH")
     age_seconds=$((now - script_mtime))
-    [ "$age_seconds" -lt "$week_seconds" ] && return
+    [ "$force_check" != "force" ] && [ "$age_seconds" -lt "$week_seconds" ] && return
 
     prompt "Check for updates by contacting GitHub?" CHECK_UPDATES "yes" "no"
     if [ "$CHECK_UPDATES" != "yes" ]; then
@@ -147,9 +180,6 @@ increment_ip() {
 
 
 CONFIG_DIR=${CONFIG_DIR:-"/etc/wireguard"}
-CLIENT_DIR=${CLIENT_DIR:-"$CONFIG_DIR/clients"}
-WG_NAME=${WG_NAME:-"wg0"}
-SERVER_CONFIG="$CONFIG_DIR/$WG_NAME.conf"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 case "$SCRIPT_PATH" in
     /*) ;;
@@ -157,6 +187,52 @@ case "$SCRIPT_PATH" in
 esac
 REPO_URL=${REPO_URL:-"https://github.com/kristianvld/wg-quick-mini"}
 UPDATE_URL=${UPDATE_URL:-"https://raw.githubusercontent.com/kristianvld/wg-quick-mini/main/wg.sh"}
+DEFAULT_CONFIG_NAME=${DEFAULT_CONFIG_NAME:-"wg0.conf"}
+
+UPDATE_ONLY=0
+CONFIG_PATH_ARG=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -u|--update)
+            UPDATE_ONLY=1
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+        *)
+            if [ -n "$CONFIG_PATH_ARG" ]; then
+                echo "Only one CONFIG_PATH is allowed."
+                show_help
+                exit 1
+            fi
+            CONFIG_PATH_ARG="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ "$UPDATE_ONLY" -eq 1 ]; then
+    require_commands curl sed grep cut date stat touch mktemp cmp cp chmod rm
+    check_for_updates "force"
+    exit 0
+fi
+
+require_commands wg wg-quick curl qrencode ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir cut awk paste date stat touch mktemp cmp cp chmod rm ss
+
+if [ -z "$CONFIG_PATH_ARG" ]; then
+    prompt "Enter WireGuard config file path" CONFIG_PATH_ARG "$DEFAULT_CONFIG_NAME"
+fi
+SERVER_CONFIG=$(resolve_config_path "$CONFIG_PATH_ARG")
+WG_NAME=$(basename "$SERVER_CONFIG")
+WG_NAME="${WG_NAME%.conf}"
+[ -z "$WG_NAME" ] && WG_NAME="wg0"
+CLIENT_DIR=${CLIENT_DIR:-"$(dirname "$SERVER_CONFIG")/${WG_NAME}_clients"}
 
 check_for_updates
 
@@ -255,6 +331,7 @@ PostDown = ip6tables -t nat -D POSTROUTING -o $INTERFACE -p udp --sport $PORT -j
 "
     fi
 
+    mkdir -p "$(dirname "$SERVER_CONFIG")"
     echo "$CONFIG
 " > "$SERVER_CONFIG"
 
