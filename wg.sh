@@ -148,7 +148,7 @@ warn_if_default_port_busy() {
         first_free=$(first_available_port "$port")
         echo "Default $label port $port is currently in use."
         echo "You can still use it by mapping incoming traffic to a separate real listen port (fake port mode)."
-        [ "$first_free" != "$port" ] && echo "First available port appears to be $first_free."
+        [ "$first_free" != "$port" ] && echo "First available port is $first_free."
     fi
 }
 
@@ -271,7 +271,7 @@ if [ ! -f "$SERVER_CONFIG" ]; then
                 if port_in_use "$PORT"; then
                     NEXT_REAL_PORT=$(first_available_port "$PORT")
                     echo "Real listen port $PORT is currently in use."
-                    [ "$NEXT_REAL_PORT" != "$PORT" ] && echo "Try port $NEXT_REAL_PORT."
+                    [ "$NEXT_REAL_PORT" != "$PORT" ] && echo "Port $PORT is busy. Suggested real listen port: $NEXT_REAL_PORT (first available)."
                     DEFAULT_REAL_PORT="$NEXT_REAL_PORT"
                     continue
                 fi
@@ -281,7 +281,7 @@ if [ ! -f "$SERVER_CONFIG" ]; then
         fi
 
         NEXT_PORT=$(first_available_port "$PORT")
-        [ "$NEXT_PORT" != "$PORT" ] && echo "Try port $NEXT_PORT."
+        [ "$NEXT_PORT" != "$PORT" ] && echo "Port $PORT is busy. Suggested listen port: $NEXT_PORT (first available)."
         DEFAULT_PORT="$NEXT_PORT"
     done
     prompt "DNS server(s) for clients to use" DNS "1.1.1.1, 2606:4700:4700::1111"
@@ -353,11 +353,11 @@ PostDown = ip6tables -t nat -D POSTROUTING -o $INTERFACE -p udp --sport $PORT -j
 fi
 
 PUBLIC_IP=""
-prompt "Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address?" ALLOW_ICANHAZIP "yes"
+prompt "Allow this script to query icanhazip.com (Cloudflare owned) to determine the server's public IPv4 and IPv6 addresses?" ALLOW_ICANHAZIP "yes"
 if [ "$ALLOW_ICANHAZIP" == "yes" ]; then
     PUBLIC_IP=$(curl -s https://ipv{4,6}.icanhazip.com/ | paste -s -d ',' - | sed 's/,/, /g')
 fi
-echo "The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6."
+echo "Clients can only use one endpoint. To support both IPv4 and IPv6, use a domain name that resolves to both."
 prompt "Enter your server public ip or domain (detected $PUBLIC_IP)" PUBLIC_IP "$(cut -d "," -f 1 <<< "$PUBLIC_IP")"
 PORT=$(option FAKE_PORT)
 [ -z "$PORT" ] && PORT=$(option "FakePort")
