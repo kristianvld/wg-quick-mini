@@ -280,6 +280,12 @@ if [ ! -f "$SERVER_CONFIG" ]; then
             break
         fi
 
+        prompt "Use port $PORT anyway for listen?" USE_BUSY_LISTEN_PORT "no" "yes"
+        if [ "$USE_BUSY_LISTEN_PORT" == "yes" ]; then
+            echo "Continuing with busy listen port $PORT."
+            break
+        fi
+
         NEXT_PORT=$(first_available_port "$PORT")
         [ "$NEXT_PORT" != "$PORT" ] && echo "Port $PORT is busy. Suggested listen port: $NEXT_PORT (first available)."
         DEFAULT_PORT="$NEXT_PORT"
