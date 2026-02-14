@@ -28,6 +28,28 @@ option() {
     grep "$1" "$SERVER_CONFIG" | cut -d '=' -f 2- | sed -E 's/^\s+|\s+$//g'
 }
 
+port_in_use() {
+    ss -H -uln sport = ":$1" | grep -q .
+}
+
+first_available_port() {
+    local port="$1"
+    while port_in_use "$port"; do
+        port=$((port + 1))
+    done
+    echo "$port"
+}
+
+warn_if_default_port_busy() {
+    local port="$1" label="$2" first_free
+    if port_in_use "$port"; then
+        first_free=$(first_available_port "$port")
+        echo "Default $label port $port is currently in use."
+        echo "You can still use it by mapping incoming traffic to a separate real listen port (fake port mode)."
+        [ "$first_free" != "$port" ] && echo "First available port appears to be $first_free."
+    fi
+}
+
 expand_ipv6() {
     IFS=:
     read -ra blocks <<< "$1"
@@ -76,19 +98,41 @@ SERVER_CONFIG="$CONFIG_DIR/$WG_NAME.conf"
 if [ ! -f "$SERVER_CONFIG" ]; then
     echo "WireGuard server config not found. Creating..."
     prompt "Enter internal CIDR mask" INTERNAL_CIDR "10.100.10.1/24, fd00:100::1/64"
-    prompt "Enter port to listen to " PORT 51820
+    DEFAULT_PORT=51820
+    warn_if_default_port_busy "$DEFAULT_PORT" "listen"
+    while true; do
+        prompt "Enter port to listen to " PORT "$DEFAULT_PORT"
+        if ! port_in_use "$PORT"; then
+            break
+        fi
+
+        echo "Port $PORT is currently in use."
+        prompt "Use this as the fake/public port and pick a different real listen port?" USE_FAKE_MODE "yes" "no"
+        if [ "$USE_FAKE_MODE" == "yes" ]; then
+            FAKE_PORT="$PORT"
+            DEFAULT_REAL_PORT=51820
+            warn_if_default_port_busy "$DEFAULT_REAL_PORT" "real listen"
+            while true; do
+                prompt "Enter the real port to listen to" PORT "$DEFAULT_REAL_PORT"
+                if port_in_use "$PORT"; then
+                    NEXT_REAL_PORT=$(first_available_port "$PORT")
+                    echo "Real listen port $PORT is currently in use."
+                    [ "$NEXT_REAL_PORT" != "$PORT" ] && echo "Try port $NEXT_REAL_PORT."
+                    DEFAULT_REAL_PORT="$NEXT_REAL_PORT"
+                    continue
+                fi
+                break
+            done
+            break
+        fi
+
+        NEXT_PORT=$(first_available_port "$PORT")
+        [ "$NEXT_PORT" != "$PORT" ] && echo "Try port $NEXT_PORT."
+        DEFAULT_PORT="$NEXT_PORT"
+    done
     prompt "DNS server(s) for clients to use" DNS "1.1.1.1, 2606:4700:4700::1111"
     prompt "Main incoming network interface" INTERFACE "$(ip route | awk '/^default/ {print $5}' | head -n 1)"
     prompt "Allow internal traffic between clients" ALLOW_INTERNAL_TRAFFIC "Yes" "no"
-    if [ "$(ss -uln sport = ":$PORT" | wc -l)" != "1" ]; then
-        echo "Port $PORT is already in use. We can however map incoming traffic using iptables rules."
-        FAKE_PORT="$PORT"
-        prompt "Enter the real port to listen to" PORT 51820
-        if [ "$(ss -uln sport = ":$PORT" | wc -l)" != "1" ]; then
-            echo "The real port is also currently in use! Aborting..."
-            exit 1
-        fi
-    fi
 
 
     CONFIG="[Interface]
