@@ -185,7 +185,7 @@ increment_blocks() {
 increment_ip() {
     if [[ "$1" =~ : ]]; then
         compress_ipv6 "$(increment_blocks 16 "%04x" ':' 65535 "$(expand_ipv6 "$1")")"
-    else 
+    else
         increment_blocks 10 "%d" '.' 255 "$1"
     fi
 }
@@ -255,7 +255,7 @@ if [ ! -f "$SERVER_CONFIG" ]; then
     DEFAULT_PORT=51820
     warn_if_default_port_busy "$DEFAULT_PORT" "listen"
     while true; do
-        prompt "Enter port to listen to " PORT "$DEFAULT_PORT"
+        prompt "Enter port to listen to" PORT "$DEFAULT_PORT"
         if ! port_in_use "$PORT"; then
             break
         fi
@@ -377,7 +377,7 @@ generate_client_config() {
     CLIENT_IPV4=$(increment_ip "$(echo "$CLIENT_IP" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort -t . -k 1,1n -k 2,2n -k 3,3n -k 4,4n | tail -1)")
     [ -n "$CLIENT_IPV4" ] && CLIENT_IPV4="$CLIENT_IPV4/32"
     CLIENT_IPV6=$(increment_ip "$(
-    for ipv6 in $(echo "$CLIENT_IP" | grep -ioE '([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}'); do 
+    for ipv6 in $(echo "$CLIENT_IP" | grep -ioE '([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}'); do
         expand_ipv6 "$ipv6"
     done | sort | tail -1)")
     [ -n "$CLIENT_IPV6" ] && CLIENT_IPV6="$CLIENT_IPV6/128"
