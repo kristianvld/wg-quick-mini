@@ -1,9 +1,10 @@
 # Minimal, automatic shell script for wg-quick
-A minimal shell script to create a wg-quick config, generate clients (with qr-codes), from user input with minimal fuzz or extra files. It will simply create a new config at `/etc/wireguard/wg0.conf`, prompt you for some settings (subnet, listen port & dns server), then create the config. Client configs and qr-codes are stored at `/etc/wireguard/clients/` with the names `<name>.conf` and `<name>_qr.txt`. IPs are automatically incremented from `wg0.conf`, no extra files needed, and adaptive to if you want to modify `wg0.conf` yourself.
+A minimal shell script to create a wg-quick config, generate clients (with optional qr-codes), from user input with minimal fuzz or extra files. It will simply create a new config at `/etc/wireguard/wg0.conf`, prompt you for some settings (subnet, listen port & dns server), then create the config. Client configs and qr-codes are stored in a per-config folder such as `/etc/wireguard/wg0_clients/` with the names `<name>.conf` and `<name>_qr.txt`. IPs are automatically incremented from `wg0.conf`, no extra files needed, and adaptive to if you want to modify `wg0.conf` yourself.
 
 # Features
 * Small single bash script
-* Few dependencies (wg-quick/wireguard, curl, qrencode, iptables)
+* Few dependencies (wg-quick/wireguard, curl, iptables, qrencode)
+    * qrencode is optional, only required for generating the QR code files and printing the QR code to the terminal
 * Generate a small wg-quick config to easily get started
 * No extra files, only `wg0.conf` and client configs stored on disk
 * Sane defaults with auto-fetch of network interface & public ip
@@ -12,8 +13,33 @@ A minimal shell script to create a wg-quick config, generate clients (with qr-co
 * Supports overriding listening ports
 * Full IPv4 and IPv6 support
 
+## Install dependencies
+Debian/Ubuntu:
+```bash
+apt update
+apt install -y wireguard-tools curl iproute2 iptables qrencode
+```
+
+Fedora:
+```bash
+dnf install -y wireguard-tools curl iproute iptables qrencode
+```
+
+Arch:
+```bash
+pacman -Sy --noconfirm wireguard-tools curl iproute2 iptables qrencode
+```
+
+Alpine:
+```bash
+apk add --no-cache wireguard-tools curl iproute2 iptables libqrencode-tools
+```
+
+Only `qrencode` is optional. Remove just `qrencode` from the install command if you do not need terminal QR output and `_qr.txt` files.
+
 ## Get started
 ```bash
+cd /etc/wireguard
 wget 'https://raw.githubusercontent.com/kristianvld/wg-quick-mini/main/wg.sh'
 chmod +x wg.sh
 ./wg.sh
@@ -22,15 +48,15 @@ chmod +x wg.sh
 ## Example:
 Example first time execution:
 ```
-root@amazing-dragonfly:/etc/wireguard# ./wg.sh 
+root@amazing-dragonfly:/etc/wireguard# ./wg.sh
 WireGuard server config not found. Creating...
-Enter internal CIDR mask (default: 10.100.10.1/24, fd00:100::1/64): 
+Enter internal CIDR mask (default: 10.100.10.1/24, fd00:100::1/64):
 Enter port to listen to  (default: 51820): 53
-DNS server(s) for clients to use (default: 1.1.1.1, 2606:4700:4700::1111): 
-Main incoming network interface (default: ens2): 
-Allow internal traffic between clients (default: Yes) [Yes/no]: 
+DNS server(s) for clients to use (default: 1.1.1.1, 2606:4700:4700::1111):
+Main incoming network interface (default: ens2):
+Allow internal traffic between clients (default: Yes) [Yes/no]:
 Port 53 is already in use. We can however map incoming traffic using iptables rules.
-Enter the real port to listen to (default: 51820): 
+Enter the real port to listen to (default: 51820):
 Created WireGuard server config at /etc/wireguard/wg0.conf
 [#] ip link add wg0 type wireguard
 [#] wg setconf wg0 /dev/fd/63
@@ -47,9 +73,9 @@ Created WireGuard server config at /etc/wireguard/wg0.conf
 [#] ip6tables -t nat -A PREROUTING -i ens2 -p udp --dport 53 -j REDIRECT --to-port 51820
 [#] iptables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
 [#] ip6tables -t nat -A POSTROUTING -o ens2 -p udp --sport 51820 -j SNAT --to-source :53
-Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes): 
+Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes):
 The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6.
-Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37): 
+Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37):
 Enter a name for the new client: my laptop
 Assigning new client ip(s): 10.100.10.2/32, fd00:100::2/128
 Restarting wireguard server to add client...
@@ -118,7 +144,7 @@ Restarting wireguard server to add client...
 █████████████████████████████████████████████████████████████████████████
 Client config saved to /etc/wireguard/clients/my laptop.conf
 Enter a name for the new client: ^C
-root@amazing-dragonfly:/etc/wireguard# cat ./clients/my\ laptop.conf 
+root@amazing-dragonfly:/etc/wireguard# cat ./clients/my\ laptop.conf
 [Interface]
 PrivateKey = 6D+ngNWVuA8SWQCvH8M4CmTQIxzWYE3/ISzUzOMWUUM=
 DNS = 1.1.1.1, 2606:4700:4700::1111
@@ -133,10 +159,10 @@ PersistentKeepalive = 25
 ```
 To add more clients, even after editing the `wg0.conf` file, simply run the script again:
 ```
-root@amazing-dragonfly:/etc/wireguard# ./wg.sh 
-Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes): 
+root@amazing-dragonfly:/etc/wireguard# ./wg.sh
+Allow this script to query icanhazip.com (Cloudflair owned) to determin the servers public ipv4 & ipv6 address? (default: yes):
 The client can only recieve one endpoint. If you want to use both ipv4 and ipv6, you need to specify a domain name that resolves to both ipv4 and ipv6.
-Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37): 
+Enter your server public ip or domain (detected 13.37.13.37, 2001:1337:1337::1) (default: 13.37.13.37):
 Enter a name for the new client: my phone
 Assigning new client ip(s): 10.100.10.3/32, fd00:100::3/128
 Restarting wireguard server to add client...
@@ -205,7 +231,7 @@ Restarting wireguard server to add client...
 █████████████████████████████████████████████████████████████████████████
 Client config saved to /etc/wireguard/clients/my phone.conf
 Enter a name for the new client: ^C
-root@amazing-dragonfly:/etc/wireguard# 
+root@amazing-dragonfly:/etc/wireguard#
 ```
 
 ## Usage:

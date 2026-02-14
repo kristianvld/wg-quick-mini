@@ -48,6 +48,18 @@ require_commands() {
     [ "$missing" -eq 1 ] && exit 1
 }
 
+setup_qr_support() {
+    CAN_QR=1
+    if ! command -v qrencode >/dev/null 2>&1; then
+        CAN_QR=0
+        echo "Command 'qrencode' is not installed."
+        echo "QR output in terminal and QR text files will be disabled."
+        echo "Install 'qrencode' to enable this functionality."
+        prompt "Continue without QR code support?" CONTINUE_NO_QR "yes" "no"
+        [ "$CONTINUE_NO_QR" != "yes" ] && exit 0
+    fi
+}
+
 resolve_config_path() {
     case "$1" in
         /*) echo "$1" ;;
@@ -223,7 +235,7 @@ if [ "$UPDATE_ONLY" -eq 1 ]; then
     exit 0
 fi
 
-require_commands wg wg-quick curl qrencode ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir cut awk paste date stat touch mktemp cmp cp chmod rm ss
+require_commands wg wg-quick curl ip iptables ip6tables sed grep tail sort cat tee xargs printf mkdir cut awk paste date stat touch mktemp cmp cp chmod rm ss
 
 if [ -z "$CONFIG_PATH_ARG" ]; then
     prompt "Enter WireGuard config file path" CONFIG_PATH_ARG "$DEFAULT_CONFIG_NAME"
@@ -352,6 +364,7 @@ PORT=$(option FAKE_PORT)
 [ -z "$PORT" ] && PORT=$(option "ListenPort")
 SERVER_PUBKEY=$(option PrivateKey | wg pubkey)
 DNS=$(option DNS)
+setup_qr_support
 
 # Function to generate a new client config
 generate_client_config() {
@@ -404,14 +417,23 @@ AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 " > "$CLIENT_CONFIG"
 
-    # Display QR code
-    qrencode -t ansiutf8 < "$CLIENT_CONFIG" | tee "$CLIENT_CONFIF_QR"
+    if [ "$CAN_QR" == "1" ]; then
+        # Display QR code
+        qrencode -t ansiutf8 < "$CLIENT_CONFIG" | tee "$CLIENT_CONFIF_QR"
+    else
+        echo "Skipping QR output because 'qrencode' is not installed."
+    fi
 
     echo "Client config saved to $CLIENT_CONFIG"
 }
 
 # Main menu
 while true; do
-    prompt "Enter a name for the new client" CLIENT_NAME
+    if ! read -rep "Enter a name for the new client (Ctrl-D to exit): " CLIENT_NAME; then
+        echo
+        echo "Exiting."
+        exit 0
+    fi
+    [ -z "$CLIENT_NAME" ] && continue
     generate_client_config "$CLIENT_NAME"
 done
